@@ -1,14 +1,80 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+// prisma/schema.prisma
 
 generator client {
-  provider = "prisma-client"
-  output   = "../src/generated/prisma"
+  provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum BookingStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+}
+
+model User {
+  id        Int       @id @default(autoincrement())
+  email     String    @unique
+  password  String
+  name      String
+  role      Role      @default(USER)
+  bookings  Booking[]
+  reviews   Review[]
+  createdAt DateTime  @default(now())
+}
+
+model Hotel {
+  id          Int      @id @default(autoincrement())
+  name        String
+  address     String
+  description String   @db.Text
+  imageUrl    String?  @db.Text
+  rating      Float    @default(0.0)
+  rooms       Room[]
+  reviews     Review[]
+  createdAt   DateTime @default(now())
+}
+
+model Room {
+  id          Int       @id @default(autoincrement())
+  type        String
+  price       Float
+  capacity    Int
+  imageUrl    String?   @db.Text
+  isAvailable Boolean   @default(true)
+  hotelId     Int
+  hotel       Hotel     @relation(fields: [hotelId], references: [id])
+  bookings    Booking[]
+}
+
+model Booking {
+  id         Int           @id @default(autoincrement())
+  checkIn    DateTime
+  checkOut   DateTime
+  totalPrice Float
+  status     BookingStatus @default(PENDING)
+  userId     Int
+  user       User          @relation(fields: [userId], references: [id])
+  roomId     Int
+  room       Room          @relation(fields: [roomId], references: [id])
+  createdAt  DateTime      @default(now())
+}
+
+model Review {
+  id        Int      @id @default(autoincrement())
+  rating    Int
+  comment   String?  @db.Text
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id])
+  hotelId   Int
+  hotel     Hotel    @relation(fields: [hotelId], references: [id])
+  createdAt DateTime @default(now())
 }
