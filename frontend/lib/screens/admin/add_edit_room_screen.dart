@@ -1,12 +1,12 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart';
+import 'package:image_picker/image_picker.dart'; 
 import '../../models/room_model.dart';
 import '../../services/room_service.dart';
-
+import '../../services/hotel_service.dart'; 
 class AddEditRoomScreen extends StatefulWidget {
   final int hotelId;
-  final Room? room; // Jika null = Tambah Baru, Jika ada = Edit
+  final Room? room; 
 
   const AddEditRoomScreen({super.key, required this.hotelId, this.room});
 
@@ -21,16 +21,26 @@ class _AddEditRoomScreenState extends State<AddEditRoomScreen> {
   final _capacityCtrl = TextEditingController();
   
   File? _imageFile;
+  final _picker = ImagePicker();
   bool _isLoading = false;
 
   @override
   void initState() {
     super.initState();
-    // Jika mode edit, isi form
     if (widget.room != null) {
       _typeCtrl.text = widget.room!.type;
       _priceCtrl.text = widget.room!.price.toStringAsFixed(0);
       _capacityCtrl.text = widget.room!.capacity.toString();
+    }
+  }
+
+  // Fungsi Ambil Gambar
+  Future<void> _pickImage() async {
+    final XFile? pickedFile = await _picker.pickImage(source: ImageSource.gallery);
+    if (pickedFile != null) {
+      setState(() {
+        _imageFile = File(pickedFile.path);
+      });
     }
   }
 
@@ -62,45 +72,111 @@ class _AddEditRoomScreenState extends State<AddEditRoomScreen> {
     setState(() => _isLoading = false);
 
     if (success && mounted) {
-      Navigator.pop(context); // Kembali ke list
+      Navigator.pop(context);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(widget.room == null ? "Kamar Berhasil Ditambah" : "Kamar Berhasil Diupdate"),
+          backgroundColor: Colors.green,
+        )
+      );
+    } else {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Gagal menyimpan data"), backgroundColor: Colors.red)
+        );
+      }
     }
   }
 
-  // ... Widget Build Form mirip dengan Hotel Form (Type, Price, Capacity, Image) ...
-  // Silakan implementasikan build mirip AddHotelScreen tapi fieldnya beda
   @override
   Widget build(BuildContext context) {
+    // Logika Tampilan Gambar
+    Widget imageWidget;
+    if (_imageFile != null) {
+      imageWidget = Image.file(_imageFile!, fit: BoxFit.cover, width: double.infinity);
+    } else if (widget.room?.imageUrl != null) {
+      imageWidget = Image.network(
+        HotelService.fixImageUrl(widget.room!.imageUrl!), 
+        fit: BoxFit.cover,
+        width: double.infinity,
+        errorBuilder: (ctx, err, stack) => const Icon(Icons.broken_image, size: 50, color: Colors.grey),
+      );
+    } else {
+      imageWidget = const Icon(Icons.camera_alt, size: 50, color: Colors.grey);
+    }
+
     return Scaffold(
-        appBar: AppBar(title: Text(widget.room == null ? "Tambah Kamar" : "Edit Kamar")),
-        body: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Form(
-                key: _formKey,
-                child: ListView(children: [
-                    // Gambar Picker (Opsional, copy dari AddHotel)
-                    // ...
-                    TextFormField(
-                        controller: _typeCtrl,
-                        decoration: const InputDecoration(labelText: "Tipe Kamar (e.g. Deluxe)"),
-                    ),
-                    TextFormField(
-                        controller: _priceCtrl,
-                        decoration: const InputDecoration(labelText: "Harga"),
-                        keyboardType: TextInputType.number,
-                    ),
-                    TextFormField(
-                        controller: _capacityCtrl,
-                        decoration: const InputDecoration(labelText: "Kapasitas (Orang)"),
-                        keyboardType: TextInputType.number,
-                    ),
-                    const SizedBox(height: 20),
-                    ElevatedButton(
-                        onPressed: _isLoading ? null : _submit,
-                        child: Text(widget.room == null ? "SIMPAN" : "UPDATE"),
-                    )
-                ])
-            )
-        )
+      appBar: AppBar(title: Text(widget.room == null ? "Tambah Kamar" : "Edit Kamar")),
+      body: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Form(
+          key: _formKey,
+          child: ListView(
+            children: [
+              // --- GAMBAR PICKER ---
+              GestureDetector(
+                onTap: _pickImage,
+                child: Container(
+                  height: 200,
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    color: Colors.grey[200],
+                    border: Border.all(color: Colors.grey),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(10),
+                    child: imageWidget,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 10),
+              const Center(child: Text("Ketuk gambar untuk mengubah foto", style: TextStyle(color: Colors.grey, fontSize: 12))),
+              const SizedBox(height: 20),
+
+              // --- FORM INPUT ---
+              TextFormField(
+                controller: _typeCtrl,
+                decoration: const InputDecoration(labelText: "Tipe Kamar (e.g. Deluxe)", border: OutlineInputBorder()),
+                validator: (v) => v!.isEmpty ? "Wajib diisi" : null,
+              ),
+              const SizedBox(height: 15),
+              
+              TextFormField(
+                controller: _priceCtrl,
+                decoration: const InputDecoration(labelText: "Harga per Malam", border: OutlineInputBorder()),
+                keyboardType: TextInputType.number,
+                validator: (v) => v!.isEmpty ? "Wajib diisi" : null,
+              ),
+              const SizedBox(height: 15),
+              
+              TextFormField(
+                controller: _capacityCtrl,
+                decoration: const InputDecoration(labelText: "Kapasitas (Orang)", border: OutlineInputBorder()),
+                keyboardType: TextInputType.number,
+                validator: (v) => v!.isEmpty ? "Wajib diisi" : null,
+              ),
+              
+              const SizedBox(height: 30),
+              
+              // --- TOMBOL SIMPAN ---
+              SizedBox(
+                height: 50,
+                child: ElevatedButton(
+                  onPressed: _isLoading ? null : _submit,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: widget.room == null ? Colors.blue : Colors.orange,
+                    foregroundColor: Colors.white,
+                  ),
+                  child: _isLoading 
+                    ? const CircularProgressIndicator(color: Colors.white) 
+                    : Text(widget.room == null ? "SIMPAN" : "UPDATE"),
+                ),
+              )
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

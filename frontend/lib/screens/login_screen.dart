@@ -3,7 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../services/auth_service.dart';
 import 'home_screen.dart';
 import 'admin/admin_home_screen.dart';
-import 'register_screen.dart'; // Import halaman Register
+import 'register_screen.dart'; 
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -17,8 +17,8 @@ class _LoginScreenState extends State<LoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   
-  bool _isLoading = false; // Status loading saat request API
-  bool _isObscure = true;  // Status sembunyikan password
+  bool _isLoading = false; 
+  bool _isObscure = true;  
 
   @override
   void dispose() {
@@ -122,14 +122,13 @@ class _LoginScreenState extends State<LoginScreen> {
               // --- INPUT PASSWORD ---
               TextField(
                 controller: _passwordController,
-                obscureText: _isObscure, // Sembunyikan/Tampilkan text
+                obscureText: _isObscure, 
                 decoration: InputDecoration(
                   labelText: "Password",
                   prefixIcon: const Icon(Icons.lock_outline),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(10),
                   ),
-                  // Tombol Mata (Show/Hide)
                   suffixIcon: IconButton(
                     icon: Icon(_isObscure ? Icons.visibility : Icons.visibility_off),
                     onPressed: () {

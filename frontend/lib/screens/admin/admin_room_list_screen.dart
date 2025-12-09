@@ -1,13 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../models/hotel_model.dart';
-import '../../models/room_model.dart';
 import '../../services/hotel_service.dart';
 import '../../services/room_service.dart';
-import 'add_edit_room_screen.dart'; // Kita buat di langkah 3
+import 'add_edit_room_screen.dart'; 
 
 class AdminRoomListScreen extends StatefulWidget {
-  final Hotel hotel; // Butuh data hotel induknya
+  final Hotel hotel; 
 
   const AdminRoomListScreen({super.key, required this.hotel});
 
@@ -16,7 +15,7 @@ class AdminRoomListScreen extends StatefulWidget {
 }
 
 class _AdminRoomListScreenState extends State<AdminRoomListScreen> {
-  late Future<Hotel> _futureHotelDetail; // Kita refresh detail hotel untuk dapat list kamar terbaru
+  late Future<Hotel> _futureHotelDetail; 
 
   @override
   void initState() {
@@ -53,7 +52,7 @@ class _AdminRoomListScreenState extends State<AdminRoomListScreen> {
           if (snapshot.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
           if (!snapshot.hasData) return const Center(child: Text("Error loading data"));
 
-          final rooms = snapshot.data!.rooms; // Ambil list kamar dari hotel
+          final rooms = snapshot.data!.rooms; 
 
           if (rooms == null || rooms.isEmpty) {
             return const Center(child: Text("Belum ada kamar di hotel ini."));
@@ -81,7 +80,6 @@ class _AdminRoomListScreenState extends State<AdminRoomListScreen> {
                           await Navigator.push(
                             context,
                             MaterialPageRoute(
-                              // Mode Edit: kirim data room yang ada
                               builder: (context) => AddEditRoomScreen(hotelId: widget.hotel.id, room: room),
                             ),
                           );
@@ -92,7 +90,6 @@ class _AdminRoomListScreenState extends State<AdminRoomListScreen> {
                       IconButton(
                         icon: const Icon(Icons.delete, color: Colors.red),
                         onPressed: () async {
-                           // Logic konfirmasi hapus (sama seperti hapus hotel)
                            bool confirm = await showDialog(
                              context: context,
                              builder: (ctx) => AlertDialog(

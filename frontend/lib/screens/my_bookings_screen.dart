@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
+import 'package:intl/intl.dart'; 
 import '../services/booking_service.dart';
-import 'add_review_screen.dart'; // Kita buat di langkah 4
+import 'add_review_screen.dart'; 
 
 class MyBookingsScreen extends StatefulWidget {
   const MyBookingsScreen({super.key});
@@ -39,11 +39,19 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
             itemCount: bookings.length,
             itemBuilder: (context, index) {
               final booking = bookings[index];
-              // Akses data nested (booking -> room -> hotel)
+              
+              // Akses data nested
               final hotelName = booking['room']['hotel']['name'] ?? 'Hotel';
               final status = booking['status'];
               final totalPrice = booking['totalPrice'];
               final hotelId = booking['room']['hotel']['id'];
+
+              // --- PERBAIKAN DI SINI: FORMATTER RUPIAH ---
+              final currencyFormatter = NumberFormat.currency(
+                locale: 'id_ID', 
+                symbol: 'Rp ', 
+                decimalDigits: 0
+              );
 
               return Card(
                 margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
@@ -53,13 +61,23 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(hotelName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                      Text("Status: $status", 
+                      
+                      const SizedBox(height: 5),
+                      
+                      Text(
+                        "Status: $status", 
                         style: TextStyle(
                           color: status == 'CONFIRMED' ? Colors.green : Colors.orange,
                           fontWeight: FontWeight.bold
                         )
                       ),
-                      Text("Total: Rp $totalPrice"),
+                      
+                      // Gunakan formatter di sini
+                      Text(
+                        "Total: ${currencyFormatter.format(totalPrice)}",
+                        style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.blueGrey),
+                      ),
+                      
                       const SizedBox(height: 10),
                       
                       // Tombol Review hanya muncul jika CONFIRMED
@@ -69,7 +87,10 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
                           child: ElevatedButton.icon(
                             icon: const Icon(Icons.star, size: 16),
                             label: const Text("Beri Review"),
-                            style: ElevatedButton.styleFrom(backgroundColor: Colors.amber, foregroundColor: Colors.black),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.amber, 
+                              foregroundColor: Colors.black
+                            ),
                             onPressed: () {
                               Navigator.push(
                                 context,

@@ -1,10 +1,10 @@
+import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
-import '../../models/hotel_model.dart';
-import '../../services/hotel_service.dart';
+import 'package:intl/intl.dart';
+import '../../services/admin_service.dart';
 import '../../services/auth_service.dart';
 import '../login_screen.dart';
-import 'add_hotel_screen.dart';
-import 'edit_hotel_screen.dart';
+import 'hotel_management_screen.dart'; // Kita pindahkan list hotel ke file terpisah agar rapi
 
 class AdminHomeScreen extends StatefulWidget {
   const AdminHomeScreen({super.key});
@@ -14,218 +14,203 @@ class AdminHomeScreen extends StatefulWidget {
 }
 
 class _AdminHomeScreenState extends State<AdminHomeScreen> {
-  // Variable untuk menampung data hotel dari API
-  late Future<List<Hotel>> _futureHotels;
+  Map<String, dynamic>? _stats;
+  bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
-    _refreshData(); // Load data saat layar pertama dibuka
+    _fetchStats();
   }
 
-  // Fungsi untuk mengambil ulang data dari server (Refresh)
-  void _refreshData() {
-    setState(() {
-      _futureHotels = HotelService().getHotels();
-    });
+  Future<void> _fetchStats() async {
+    final data = await AdminService().getDashboardStats();
+    if (mounted) {
+      setState(() {
+        _stats = data;
+        _isLoading = false;
+      });
+    }
   }
 
-  // Fungsi Logout
+  Future<void> _exportCsv() async {
+    final csvData = await AdminService().downloadReport();
+    if (csvData != null && mounted) {
+      // Karena keterbatasan permission di tutorial singkat, 
+      // kita tampilkan CSV di Dialog agar bisa di-copy admin.
+      showDialog(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text("Data CSV Berhasil Diambil"),
+          content: SingleChildScrollView(
+            child: SelectableText(csvData), // Bisa dicopy
+          ),
+          actions: [
+            TextButton(onPressed: ()=>Navigator.pop(ctx), child: const Text("Tutup"))
+          ],
+        ),
+      );
+    }
+  }
+
   void _logout() {
     AuthService().logout();
-    Navigator.pushReplacement(
-      context, 
-      MaterialPageRoute(builder: (c) => const LoginScreen())
-    );
-  }
-
-  // Fungsi Konfirmasi & Hapus Hotel
-  void _confirmDelete(Hotel hotel) {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text("Hapus Hotel?"),
-        content: Text("Yakin ingin menghapus '${hotel.name}'?\n\nPERINGATAN: Semua kamar dan review terkait hotel ini juga akan dihapus permanen."),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx), // Tutup dialog
-            child: const Text("Batal"),
-          ),
-          TextButton(
-            onPressed: () async {
-              Navigator.pop(ctx); // Tutup dialog dulu
-              
-              // Panggil Service Delete
-              bool success = await HotelService().deleteHotel(hotel.id);
-              
-              if (success) {
-                _refreshData(); // Refresh list jika berhasil
-                if (!mounted) return;
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text("Data hotel berhasil dihapus"), backgroundColor: Colors.green)
-                );
-              } else {
-                if (!mounted) return;
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text("Gagal menghapus data"), backgroundColor: Colors.red)
-                );
-              }
-            }, 
-            child: const Text("Hapus", style: TextStyle(color: Colors.red)),
-          ),
-        ],
-      ),
-    );
+    Navigator.pushReplacement(context, MaterialPageRoute(builder: (c) => const LoginScreen()));
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Admin Dashboard"),
-        backgroundColor: Colors.redAccent, 
+        title: const Text("Dashboard Admin"),
+        backgroundColor: Colors.redAccent,
         foregroundColor: Colors.white,
         actions: [
-          IconButton(
-            onPressed: _logout, 
-            icon: const Icon(Icons.logout),
-            tooltip: "Logout",
-          )
+          IconButton(onPressed: _exportCsv, icon: const Icon(Icons.download), tooltip: "Export Laporan"),
+          IconButton(onPressed: _logout, icon: const Icon(Icons.logout)),
         ],
       ),
-      
-      // Tombol Tambah Hotel (+)
-      floatingActionButton: FloatingActionButton(
-        backgroundColor: Colors.redAccent,
-        child: const Icon(Icons.add, color: Colors.white),
-        onPressed: () async {
-           // Tunggu sampai user kembali dari halaman AddHotel
-           await Navigator.push(
-             context, 
-             MaterialPageRoute(builder: (context) => const AddHotelScreen())
-           );
-           // Setelah kembali, refresh data agar hotel baru muncul
-           _refreshData(); 
-        },
-      ),
-
-      body: FutureBuilder<List<Hotel>>(
-        future: _futureHotels,
-        builder: (context, snapshot) {
-          // 1. State Loading
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          } 
-          // 2. State Error
-          else if (snapshot.hasError) {
-            return Center(child: Text("Error: ${snapshot.error}"));
-          } 
-          // 3. State Kosong
-          else if (!snapshot.hasData || snapshot.data!.isEmpty) {
-            return const Center(child: Text("Belum ada data hotel."));
-          }
-
-          final hotels = snapshot.data!;
-
-          // 4. State Ada Data (List)
-          return ListView.builder(
-            padding: const EdgeInsets.all(10),
-            itemCount: hotels.length,
-            itemBuilder: (context, index) {
-              final hotel = hotels[index];
-              
-              // Fix URL Gambar (Localhost -> 10.0.2.2)
-              String? imageUrl = hotel.imageUrl;
-              if (imageUrl != null) {
-                imageUrl = HotelService.fixImageUrl(imageUrl);
-              }
-
-              return Card(
-                elevation: 3,
-                margin: const EdgeInsets.only(bottom: 12),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                child: Padding(
-                  padding: const EdgeInsets.all(10.0),
-                  child: Row(
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : _stats == null
+              ? const Center(child: Text("Gagal memuat data"))
+              : SingleChildScrollView(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // --- GAMBAR THUMBNAIL ---
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(8),
-                        child: imageUrl != null
-                          ? Image.network(
-                              imageUrl, 
-                              width: 80, 
-                              height: 80, 
-                              fit: BoxFit.cover,
-                              errorBuilder: (ctx, err, stack) => Container(width: 80, height: 80, color: Colors.grey, child: const Icon(Icons.broken_image)),
-                            )
-                          : Container(
-                              width: 80, 
-                              height: 80, 
-                              color: Colors.grey[300], 
-                              child: const Icon(Icons.hotel, color: Colors.grey)
-                            ),
+                      // 1. KARTU RINGKASAN
+                      Row(
+                        children: [
+                          _buildStatCard("Pendapatan", "Rp ${_formatCurrency(_stats!['summary']['totalRevenue'])}", Colors.green),
+                          const SizedBox(width: 10),
+                          _buildStatCard("Booking", "${_stats!['summary']['totalBookings']}", Colors.blue),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+                      Row(
+                        children: [
+                          _buildStatCard("User", "${_stats!['summary']['totalUsers']}", Colors.orange),
+                          const SizedBox(width: 10),
+                          _buildStatCard("Hotel", "${_stats!['summary']['totalHotels']}", Colors.purple),
+                        ],
                       ),
                       
-                      const SizedBox(width: 12),
-
-                      // --- INFO HOTEL ---
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              hotel.name, 
-                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              hotel.address, 
-                              style: TextStyle(color: Colors.grey[600], fontSize: 13),
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ],
+                      const SizedBox(height: 30),
+                      
+                      // 2. TOMBOL MANAJEMEN
+                      SizedBox(
+                        width: double.infinity,
+                        height: 50,
+                        child: ElevatedButton.icon(
+                          icon: const Icon(Icons.hotel),
+                          label: const Text("KELOLA DATA HOTEL & KAMAR"),
+                          style: ElevatedButton.styleFrom(backgroundColor: Colors.grey[800], foregroundColor: Colors.white),
+                          onPressed: () {
+                             // Pindah ke halaman List Hotel (Code lama AdminHomeScreen dipindah ke sini)
+                             Navigator.push(context, MaterialPageRoute(builder: (c) => const HotelManagementScreen()));
+                          },
                         ),
                       ),
 
-                      // --- TOMBOL AKSI (EDIT & DELETE) ---
-                      Column(
-                        children: [
-                          // Tombol Edit
-                          IconButton(
-                            icon: const Icon(Icons.edit, color: Colors.orange),
-                            visualDensity: VisualDensity.compact,
-                            onPressed: () async {
-                              // Pindah ke halaman Edit & bawa data hotel
-                              final result = await Navigator.push(
-                                context,
-                                MaterialPageRoute(builder: (context) => EditHotelScreen(hotel: hotel)),
-                              );
-                              // Jika update sukses (result == true), refresh list
-                              if (result == true) {
-                                _refreshData();
-                              }
-                            },
+                      const SizedBox(height: 30),
+
+                      // 3. GRAFIK PENDAPATAN
+                      const Text("Grafik Pendapatan (Tahun Ini)", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                      const SizedBox(height: 20),
+                      SizedBox(
+                        height: 300,
+                        child: BarChart(
+                          BarChartData(
+                            alignment: BarChartAlignment.spaceAround,
+                            maxY: _getMaxY(), // Fungsi hitung tinggi grafik
+                            barTouchData: BarTouchData(enabled: true),
+                            titlesData: FlTitlesData(
+                              show: true,
+                              bottomTitles: AxisTitles(
+                                sideTitles: SideTitles(
+                                  showTitles: true,
+                                  getTitlesWidget: (double value, TitleMeta meta) {
+                                    const style = TextStyle(fontSize: 10, fontWeight: FontWeight.bold);
+                                    List<String> labels = List<String>.from(_stats!['chartData']['labels']);
+                                    if (value.toInt() >= 0 && value.toInt() < labels.length) {
+                                      return Text(labels[value.toInt()], style: style);
+                                    }
+                                    return const Text('');
+                                  },
+                                ),
+                              ),
+                              leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)), // Hide Y axis numbers for clean look
+                              topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                              rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                            ),
+                            borderData: FlBorderData(show: false),
+                            barGroups: _generateChartGroups(),
                           ),
-                          // Tombol Delete
-                          IconButton(
-                            icon: const Icon(Icons.delete, color: Colors.red),
-                            visualDensity: VisualDensity.compact,
-                            onPressed: () => _confirmDelete(hotel),
-                          ),
-                        ],
-                      )
+                        ),
+                      ),
                     ],
                   ),
                 ),
-              );
-            },
-          );
-        },
+    );
+  }
+
+  // --- HELPER FUNCTIONS ---
+  
+  String _formatCurrency(dynamic value) {
+    if (value == null) return "0";
+    final format = NumberFormat.compact(locale: 'id_ID'); // Format 1.2M, 500K
+    return format.format(value);
+  }
+
+  double _getMaxY() {
+    List<dynamic> revenues = _stats!['chartData']['revenue'];
+    // Cari nilai tertinggi untuk skala grafik
+    double max = 0;
+    for(var r in revenues) {
+      if ((r as num).toDouble() > max) max = r.toDouble();
+    }
+    return max == 0 ? 100 : max * 1.2; // Tambah buffer 20%
+  }
+
+  List<BarChartGroupData> _generateChartGroups() {
+    List<dynamic> revenues = _stats!['chartData']['revenue'];
+    List<BarChartGroupData> groups = [];
+    
+    for (int i = 0; i < revenues.length; i++) {
+      groups.add(
+        BarChartGroupData(
+          x: i,
+          barRods: [
+            BarChartRodData(
+              toY: (revenues[i] as num).toDouble(),
+              color: Colors.redAccent,
+              width: 15,
+              borderRadius: BorderRadius.circular(4),
+            )
+          ],
+        )
+      );
+    }
+    return groups;
+  }
+
+  Widget _buildStatCard(String title, String value, Color color) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: color.withOpacity(0.5)),
+        ),
+        child: Column(
+          children: [
+            Text(value, style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: color)),
+            const SizedBox(height: 5),
+            Text(title, style: TextStyle(color: color)),
+          ],
+        ),
       ),
     );
   }
