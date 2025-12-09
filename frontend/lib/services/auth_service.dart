@@ -38,6 +38,26 @@ class AuthService {
     return prefs.getString('token');
   }
 
+  // REGISTER
+  Future<bool> register(String name, String email, String password) async {
+    final url = Uri.parse('${ApiConfig.baseUrl}/auth/register');
+    try {
+      final response = await http.post(
+        url,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'name': name,
+          'email': email,
+          'password': password,
+          'role': 'USER' // Default user biasa
+        }),
+      );
+      return response.statusCode == 201;
+    } catch (e) {
+      return false;
+    }
+  }
+
   // Fungsi Logout
   Future<void> logout() async {
     final prefs = await SharedPreferences.getInstance();

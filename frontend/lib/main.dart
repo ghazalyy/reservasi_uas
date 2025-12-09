@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'screens/login_screen.dart';
+import 'screens/splash_screen.dart'; 
 
 void main() {
   runApp(const MyApp());
@@ -13,8 +13,11 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'Hotel Booking',
-      theme: ThemeData(primarySwatch: Colors.blue),
-      home: const LoginScreen(),
+      theme: ThemeData(
+        primarySwatch: Colors.blue,
+        useMaterial3: true, 
+      ),
+      home: const SplashScreen(),
     );
   }
 }
