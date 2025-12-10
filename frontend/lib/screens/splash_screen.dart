@@ -29,6 +29,7 @@ class _SplashScreenState extends State<SplashScreen> {
     final token = prefs.getString('token');
     final role = prefs.getString('role');
 
+    // Cek apakah widget masih aktif di layar
     if (!mounted) return;
 
     if (token != null && role != null) {
@@ -56,18 +57,18 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.blueAccent, // Warna background
+      backgroundColor: Colors.blueAccent, 
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
-          children: const [
-            Icon(
-              Icons.hotel_class_rounded, // Ganti dengan Logo Anda jika punya gambar aset
+          children: [ 
+            const Icon(
+              Icons.hotel_class_rounded, 
               size: 100,
               color: Colors.white,
             ),
-            SizedBox(height: 20),
-            Text(
+            const SizedBox(height: 20),
+            const Text(
               "Hotel Booking App",
               style: TextStyle(
                 color: Colors.white,
@@ -75,8 +76,8 @@ class _SplashScreenState extends State<SplashScreen> {
                 fontWeight: FontWeight.bold,
               ),
             ),
-            SizedBox(height: 40),
-            CircularProgressIndicator(
+            const SizedBox(height: 40),
+            const CircularProgressIndicator(
               color: Colors.white,
             ),
           ],

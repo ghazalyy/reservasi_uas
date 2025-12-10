@@ -17,11 +17,18 @@ class AuthService {
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        final token = data['payload']['token']; // Sesuaikan dengan response backend Anda
         
-        // Simpan token ke HP
+        // Ambil data dari payload response backend
+        final token = data['payload']['token']; 
+        final role = data['payload']['role']; 
+
+        // Simpan token DAN role ke HP
         final prefs = await SharedPreferences.getInstance();
         await prefs.setString('token', token);
+        
+        // Simpan Role
+        await prefs.setString('role', role ?? 'USER'); 
+        
         return true;
       } else {
         return false;
@@ -32,10 +39,16 @@ class AuthService {
     }
   }
 
-  // Fungsi Cek apakah user sudah login
+  // Fungsi Cek apakah user sudah login (Ambil Token)
   Future<String?> getToken() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getString('token');
+  }
+
+  // Fungsi Ambil Role
+  Future<String?> getRole() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString('role');
   }
 
   // REGISTER
@@ -49,11 +62,12 @@ class AuthService {
           'name': name,
           'email': email,
           'password': password,
-          'role': 'USER' // Default user biasa
+          'role': 'USER' 
         }),
       );
       return response.statusCode == 201;
     } catch (e) {
+      print("Error Register: $e");
       return false;
     }
   }
@@ -62,5 +76,6 @@ class AuthService {
   Future<void> logout() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('token');
+    await prefs.remove('role'); 
   }
 }
