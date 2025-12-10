@@ -60,6 +60,11 @@ Migrasi Database: Jalankan perintah ini untuk membuat tabel otomatis:
 npx prisma db push
 ```
 
+Jalankan Seeding:
+```bash
+npx prisma db seed
+```
+
 Jalankan Server:
 
 ```Bash
